@@ -5,13 +5,6 @@
 //  Created by 登山元気 on 2018/01/20.
 //  Copyright © 2018年 genki toyama. All rights reserved.
 //
-//
-//  ViewController.swift
-//  momomind_ios11
-//
-//  Created by Kentaro Matsumae on 2017/06/16.
-//  Copyright © 2017年 kenmaz.net. All rights reserved.
-//
 
 import UIKit
 import AVFoundation
@@ -25,6 +18,7 @@ class ViewController: UIViewController {
     
     @IBOutlet weak var facePos: UILabel!
     @IBOutlet weak var faceTime: UILabel!
+    @IBOutlet weak var faceArea: UILabel!
     
     @IBOutlet var progressViews: [UIProgressView]!{
         didSet {
@@ -49,23 +43,24 @@ class ViewController: UIViewController {
     }
     
     //MARK: vraiables
+    //video capture
     let session = AVCaptureSession()
     var device: AVCaptureDevice?
     var previewLayer: AVCaptureVideoPreviewLayer?
     var connection : AVCaptureConnection?
     
-    let inputSize: Float = 112
-    
     static var isFrontCamera: Bool = true
-    
-    //時間計測用の変数.
-    var cnt : Float = 0
-    //タイマー.
+
+    //timer
     var timer : Timer!
+    var cnt : Float = 0
     var currentFaceNum : Int = 0
     var previousFaceNum : Int = 0
-    var count : Int = 0
     
+    let timerInterval : Double = 0.05
+    
+    //coreml
+    let inputSize: Float = 112
     let momomind = How_old_0115()
     
     lazy var faceRequest: VNDetectFaceRectanglesRequest = {
@@ -82,14 +77,18 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         setupVideoCapture(isBack: true)
         
-        //タイマーを作る.
-        timer = Timer.scheduledTimer(timeInterval: 0.05, target: self, selector: #selector(ViewController.onUpdate(timer:)), userInfo: nil, repeats: true)
+        //make timer
+        timer = Timer.scheduledTimer(timeInterval: timerInterval, target: self,
+                                     selector: #selector(self.onUpdate(timer:)), userInfo: nil, repeats: true)
+        
+        //hide predict part
+        overlayView.isHidden = true
     }
     
-    //NSTimerIntervalで指定された秒数毎に呼び出されるメソッド.
+    //timer
     @objc func onUpdate(timer : Timer){
         if(currentFaceNum > 0){
-            cnt += 0.05
+            cnt += Float(timerInterval)
         }
         //桁数を指定して文字列を作る.
         let str = "faceTime: ".appendingFormat("%.2f",cnt)
@@ -120,7 +119,6 @@ class ViewController: UIViewController {
 }
 
 //MARK: - setup video
-
 extension ViewController {
     
     private var isActualDevice: Bool {
@@ -200,6 +198,9 @@ extension ViewController {
         view.layer.insertSublayer(previewLayer, at: 0)
         self.previewLayer = previewLayer
         
+        //hide camera layer
+//        self.previewLayer?.isHidden = true
+        
         // Output
         let output = AVCaptureVideoDataOutput()
         let key = kCVPixelBufferPixelFormatTypeKey as String
@@ -217,42 +218,8 @@ extension ViewController {
     }
 }
 
+
 //MARK: - Video Capture
-
-//reference: https://qiita.com/marty-suzuki/items/496f211e22cad1f8de19
-//extension DispatchQueue {
-//    func throttle(delay: DispatchTimeInterval) -> (_ action: @escaping () -> ()) -> () {
-//        var lastFireTime: DispatchTime = .now()
-//
-//        return { [weak self, delay] action in
-//            let deadline: DispatchTime = .now() + delay
-//            self?.asyncAfter(deadline: deadline) { [delay] in
-//                let now: DispatchTime = .now()
-//                let when: DispatchTime = lastFireTime + delay
-//                if now < when { return }
-//                lastFireTime = .now()
-//                action()
-//            }
-//        }
-//    }
-//
-//    func debounce (delay: DispatchTimeInterval) -> (_ action: @escaping () -> ()) -> () {
-//        var lastFireTime: DispatchTime = .now()
-//
-//        return { [weak self, delay] action in
-//            let deadline: DispatchTime = .now() + delay
-//            lastFireTime = .now()
-//            self?.asyncAfter(deadline: deadline) { [delay] in
-//                let now: DispatchTime = .now()
-//                let when: DispatchTime = lastFireTime + delay
-//                if now < when { return }
-//                lastFireTime = .now()
-//                action()
-//            }
-//        }
-//    }
-//}
-
 extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
     // 毎フレーム実行される処理
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
@@ -279,30 +246,11 @@ extension ViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
                 print(error)
             }
         }
-        
-        //イベント発生中であっても、一定時間は同じ処理を実行しない
-        //        let throttleAction = DispatchQueue.global().throttle(delay: .milliseconds(1000))
-        //         throttleAction { [unowned self] in
-        //            do {
-        //                try handler.perform([self.faceRequest])
-        //            } catch {
-        //                print(error)
-        //            }
-        //
-        //            let now = NSDate()
-        //            let formatter = DateFormatter()
-        //            formatter.dateFormat = "yyyy/MM/dd HH:mm:ss"
-        //            let str = formatter.string(from: now as Date)
-        //            print(str)
-        //        }
-        
     }
 }
 
 //MARK: - Face detection
-
 extension ViewController {
-    
     func vnRequestHandler(request: VNRequest, error: Error?) {
         self.currentFaceNum = 1
         
@@ -330,22 +278,22 @@ extension ViewController {
         }
         
         showPreview(cgImage: cgImage)
+        
+        //TODO:if文かます
         predicate(cgImage: cgImage)
     }
     
     private func updateTimer(){
         if(self.currentFaceNum != self.previousFaceNum){
             if(self.currentFaceNum > 0){
-                //appear
                 //timerを生成する.
-                self.timer = Timer.scheduledTimer(timeInterval: 0.05, target: self, selector: #selector(ViewController.onUpdate(timer:)), userInfo: nil, repeats: true)
-                print("face appear")
+                self.timer = Timer.scheduledTimer(timeInterval: self.timerInterval, target: self, selector: #selector(self.onUpdate(timer:)), userInfo: nil, repeats: true)
+//                print("face appear")
             }else{
-                //disappear
                 //timerを破棄する.
                 self.timer.invalidate()
                 self.cnt = 0
-                print("face disappear")
+//                print("face disappear")
             }
             self.previousFaceNum = self.currentFaceNum
         }
@@ -374,10 +322,13 @@ extension ViewController {
         let box = face.boundingBox.scaledForOverlay(to: viewSize)
         boxes.append(box)
         
+        let area = box.width * box.height
+        
         DispatchQueue.main.async {
             self.overlayView.boxes = boxes
             self.overlayView.setNeedsDisplay()
             
+            self.faceArea.text = String(format: "%.02f", Float(area))
             self.facePos.text = String(format: "%.01f", Float(box.midX)) + ", " + String(format: "%.01f", Float(box.midY))
         }
     }
@@ -414,13 +365,9 @@ extension ViewController {
 }
 
 //MARK: - Predicate
-
 extension ViewController {
-    
     fileprivate func predicate(cgImage: CGImage) {
         let image = CIImage(cgImage: cgImage)
-        
-        //        print(image)
         
         let handler = VNImageRequestHandler(ciImage: image)
         do {
@@ -463,6 +410,8 @@ extension ViewController {
         progress?.progress = ob.confidence
     }
 }
+
+
 
 extension CGRect {
     func scaledForOverlay(to size: CGSize) -> CGRect {
