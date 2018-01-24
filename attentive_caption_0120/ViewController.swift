@@ -19,6 +19,12 @@ class ViewController: UIViewController {
     @IBOutlet weak var facePos: UILabel!
     @IBOutlet weak var faceTime: UILabel!
     @IBOutlet weak var faceArea: UILabel!
+    @IBOutlet weak var currentID: UILabel!
+    
+    var confidenceDic = [Int:Float]()
+    var confidences = [Int]()
+    let confidenceSize : Int = 50
+    var isStartPredict = false
     
     @IBOutlet var progressViews: [UIProgressView]!{
         didSet {
@@ -82,7 +88,7 @@ class ViewController: UIViewController {
                                      selector: #selector(self.onUpdate(timer:)), userInfo: nil, repeats: true)
         
         //hide predict part
-        overlayView.isHidden = true
+//        overlayView.isHidden = true
     }
     
     //timer
@@ -120,7 +126,6 @@ class ViewController: UIViewController {
 
 //MARK: - setup video
 extension ViewController {
-    
     private var isActualDevice: Bool {
         return TARGET_OS_SIMULATOR != 1
     }
@@ -293,6 +298,9 @@ extension ViewController {
                 //timerを破棄する.
                 self.timer.invalidate()
                 self.cnt = 0
+                
+                self.isStartPredict = false
+                self.confidences.removeAll()
 //                print("face disappear")
             }
             self.previousFaceNum = self.currentFaceNum
@@ -377,6 +385,8 @@ extension ViewController {
         } catch {
             print(error)
         }
+        
+        
     }
     
     private func handleClassification(request: VNRequest, error: Error?) {
@@ -399,6 +409,24 @@ extension ViewController {
                 }
             }
         }
+        
+        if (self.isStartPredict && observations.count > 0) {
+            self.confidences.append(self.maxDicKey(dic: self.confidenceDic))
+//            print("added: \(self.confidences.last!)")
+            if(self.confidences.count > self.confidenceSize){
+                self.confidences.removeFirst()
+            }
+            var count = [Int](repeating: 0, count: 8)
+            for c in confidences{
+                count[c] += 1
+            }
+            let maxID = maxArrKey(arr: count)
+            
+            DispatchQueue.main.async {
+                self.currentID.text = "currID: " + String(describing: maxID)
+            }
+        }
+        
     }
     
     private func updateLabel(idx: Int, ob: VNClassificationObservation) {
@@ -408,9 +436,50 @@ extension ViewController {
         let per = Int(ob.confidence * 100)
         label?.text = "\(per)%"
         progress?.progress = ob.confidence
+        
+        confidenceDic[idx] = ob.confidence
+//        print("conf added: \(idx), \(ob.confidence)")
+        
+        if(!self.isStartPredict){
+            self.isStartPredict = true
+        }
+    }
+    
+    private func maxDicKey(dic:[Int:Float]) -> Int{
+        //valueの最大値を取り出す
+        let max = dic.values.max()
+        var maxKey:Int = -1
+        //辞書の中身をひとつずつ見ていく
+        for (key,value) in dic{
+            if value == max{
+                print("key: \(key), value: \(value)")
+                if maxKey == -1{
+                    maxKey = key
+                }else{
+                    print("同じ値の人がいます")
+                }
+            }
+        }
+        return maxKey
+    }
+    
+    private func maxArrKey(arr:[Int]) -> Int{
+        //valueの最大値を取り出す
+        let max = arr.max()
+        var maxKey:Int = -1
+        //辞書の中身をひとつずつ見ていく
+        for (i, value) in arr.enumerated(){
+            if value == max{
+                if maxKey == -1{
+                    maxKey = i
+                }else{
+                    print("errorrrrr")
+                }
+            }
+        }
+        return maxKey
     }
 }
-
 
 
 extension CGRect {
