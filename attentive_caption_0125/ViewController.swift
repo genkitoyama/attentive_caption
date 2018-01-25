@@ -87,8 +87,10 @@ class ViewController: UIViewController {
     //decide MODE
     static var myMode = MODE.TITLE
     var prevMode = MODE.TITLE
-    let faceAreaThresholdFar : Int = 20000
-    let faceAreaThresholdNear : Int = 40000
+    
+    //TODO: ここいじる
+    let faceAreaThresholdFar : Int = 60000
+    let faceAreaThresholdNear : Int = 90000
     
     let faceTimeThresholdAbst : Int = 5
     let faceTimeThresholdDetail : Int = 15              //10+5
@@ -96,6 +98,22 @@ class ViewController: UIViewController {
     let faceTimeThresholdUrabanashi : Int = 75          //30+30+10+5
     
     //each works data
+    private var titleView: UIView!
+    private var abstView: UIView!
+    private var detailView: UIView!
+    private var moreDetailView: UIView!
+    private var urabanashiView: UIView!
+    
+    private var headerImageView: UIImageView!
+    private var titleImageView: UIImageView!
+    private var abstImageView: UIImageView!
+    private var detailImageView: UIImageView!
+    private var moreDetailImageView: UIImageView!
+    private var urabanashiImageView: UIImageView!
+    var timerForInterval: Timer!
+    var isWaitChangingMode: Bool = false
+    
+    let animationDuration:Float = 0.8
     
     //MARK: funcs
     override func viewDidLoad() {
@@ -107,7 +125,71 @@ class ViewController: UIViewController {
                                      selector: #selector(self.onUpdate(timer:)), userInfo: nil, repeats: true)
         
         //hide predict part
-//        overlayView.isHidden = true
+        overlayView.isHidden = true
+        self.view.backgroundColor = UIColor.black
+        
+        titleView = UIView(frame: self.view.frame)
+        titleView.backgroundColor = UIColor.black
+        titleView.layer.position = CGPoint(x:self.view.frame.width/2, y:self.view.frame.height/2)
+        titleImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height))
+        let titleImage: UIImage = UIImage(named: "title.jpg")!
+        titleImageView.image = titleImage
+        titleView.addSubview(titleImageView)
+        titleView.alpha = 1.0
+        
+        abstView = UIView(frame: self.view.frame)
+        abstView.backgroundColor = UIColor.black
+        abstView.layer.position = CGPoint(x:self.view.frame.width/2, y:self.view.frame.height/2)
+        abstImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height))
+        let abstImage: UIImage = UIImage(named: "ab4.jpg")!
+        abstImageView.image = abstImage
+        abstView.addSubview(abstImageView)
+        abstView.alpha = 0.0
+        
+        detailView = UIView(frame: self.view.frame)
+        detailView.backgroundColor = UIColor.black
+        detailView.layer.position = CGPoint(x:self.view.frame.width/2, y:self.view.frame.height/2)
+        detailImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height))
+        let detailImage: UIImage = UIImage(named: "de4.jpg")!
+        detailImageView.image = detailImage
+        detailView.addSubview(detailImageView)
+        detailView.alpha = 0.0
+        
+        moreDetailView = UIView(frame: self.view.frame)
+        moreDetailView.backgroundColor = UIColor.black
+        moreDetailView.layer.position = CGPoint(x:self.view.frame.width/2, y:self.view.frame.height/2)
+        moreDetailImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height))
+        let moreDetailImage: UIImage = UIImage(named: "more4.jpg")!
+        moreDetailImageView.image = moreDetailImage
+        moreDetailView.addSubview(moreDetailImageView)
+        moreDetailView.alpha = 0.0
+        
+        urabanashiView = UIView(frame: self.view.frame)
+        urabanashiView.backgroundColor = UIColor.black
+        urabanashiView.layer.position = CGPoint(x:self.view.frame.width/2, y:self.view.frame.height/2)
+        urabanashiImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height))
+        let urabanashiImage: UIImage = UIImage(named: "ura4.jpg")!
+        urabanashiImageView.image = urabanashiImage
+        urabanashiView.addSubview(urabanashiImageView)
+        urabanashiView.alpha = 0.0
+        
+        self.view.addSubview(abstView)
+        self.view.addSubview(detailView)
+        self.view.addSubview(moreDetailView)
+        self.view.addSubview(urabanashiView)
+        
+        //header
+        // UIImageを作成.
+        let headerImage: UIImage = UIImage(named: "h4.jpg")!
+        // UIImageViewを作成.
+        headerImageView = UIImageView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: view.frame.height*(450/2048)))
+        // 画像をUIImageViewに設定する.
+        headerImageView.image = headerImage
+        // UIImageViewをViewに追加する
+        self.view.addSubview(headerImageView)
+        
+        //title
+        self.view.addSubview(titleView)
     }
     
     //timer
@@ -124,25 +206,69 @@ class ViewController: UIViewController {
         }
         previousFaceNum = currentFaceNum
         
-        if(prevMode != ViewController.myMode){
+        if(!isWaitChangingMode && prevMode != ViewController.myMode){
+            var fromView = UIView()
+            
+            switch prevMode{
+            case .TITLE:
+                fromView = titleView
+            case .ABST:
+                fromView = abstView
+            case .DETAIL:
+                fromView = detailView
+            case .MORE_DETAIL:
+                fromView = moreDetailView
+            case .URABANASHI:
+                fromView = urabanashiView
+            }
+            
             switch ViewController.myMode{
             case .TITLE:
                 print("change to Title")
                 prevMode = MODE.TITLE
+                autoChange(from: fromView, to: titleView)
+                //数秒のタイマー説
             case .ABST:
                 print("change to Abst")
                 prevMode = MODE.ABST
+                autoChange(from: fromView, to: abstView)
             case .DETAIL:
                 print("change to Detail")
                 prevMode = MODE.DETAIL
+                autoChange(from: fromView, to: detailView)
             case .MORE_DETAIL:
                 print("change to More detail")
                 prevMode = MODE.MORE_DETAIL
+                autoChange(from: fromView, to: moreDetailView)
             case .URABANASHI:
                 print("change to Urabanashi")
                 prevMode = MODE.URABANASHI
+                autoChange(from: fromView, to: urabanashiView)
             }
         }
+    }
+    
+    func autoChange(from: UIView, to: UIView){
+        if !isWaitChangingMode{
+            //timer
+            self.isWaitChangingMode = true
+            self.timerForInterval = Timer.scheduledTimer(timeInterval: 4, target: self,
+                                                         selector: #selector(self.onUpdate2(timer:)), userInfo: nil, repeats: false)
+            
+            from.alpha = 1.0
+            to.alpha = 0.0
+        
+            UIView.animate(withDuration: TimeInterval(animationDuration), delay: 0.0, options: [.curveLinear], animations: {
+                    from.alpha = 0.0
+                    to.alpha = 1.0
+                }, completion: { _ in
+                })
+        }
+    }
+    
+    @objc func onUpdate2(timer: Timer){
+        isWaitChangingMode = false
+        print("waited")
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -246,7 +372,7 @@ extension ViewController {
         self.previewLayer = previewLayer
         
         //hide camera layer
-//        self.previewLayer?.isHidden = true
+        self.previewLayer?.isHidden = true
         
         // Output
         let output = AVCaptureVideoDataOutput()
@@ -483,41 +609,49 @@ extension ViewController {
                 count[c] += 1
             }
             let maxID = maxArrKey(arr: count)
-            
-            if prevFontID != maxID{
-                switch maxID {
-                case 0:
-                    print(maxID)
-                    prevFontID = maxID
-                case 1:
-                    print(maxID)
-                    prevFontID = maxID
-                case 2:
-                    print(maxID)
-                    prevFontID = maxID
-                case 3:
-                    print(maxID)
-                    prevFontID = maxID
-                case 4:
-                    print(maxID)
-                    prevFontID = maxID
-                case 5:
-                    print(maxID)
-                    prevFontID = maxID
-                case 6:
-                    print(maxID)
-                    prevFontID = maxID
-                case 7:
-                    print(maxID)
-                    prevFontID = maxID
-                default:
-                    print("hoge")
-                }
-            }
-            
+        
             //TODO: フォントを即反映させないようにしたい
             DispatchQueue.main.async {
                 self.currentID.text = "currID: " + String(describing: maxID)
+                
+                if self.prevFontID != maxID{
+                    switch maxID {
+                    case 0:
+                        self.abstImageView.image = UIImage(named: "ab1.jpg")!
+                        self.detailImageView.image = UIImage(named: "de1.jpg")!
+                        self.prevFontID = maxID
+                    case 1:
+                        self.abstImageView.image = UIImage(named: "ab1.jpg")!
+                        self.detailImageView.image = UIImage(named: "de1.jpg")!
+                        self.prevFontID = maxID
+                    case 2:
+                        self.abstImageView.image = UIImage(named: "ab2.jpg")!
+                        self.detailImageView.image = UIImage(named: "de2.jpg")!
+                        self.prevFontID = maxID
+                    case 3:
+                        self.abstImageView.image = UIImage(named: "ab3.jpg")!
+                        self.detailImageView.image = UIImage(named: "de3.jpg")!
+                        self.prevFontID = maxID
+                    case 4:
+                        self.abstImageView.image = UIImage(named: "ab4.jpg")!
+                        self.detailImageView.image = UIImage(named: "de4.jpg")!
+                        self.prevFontID = maxID
+                    case 5:
+                        self.abstImageView.image = UIImage(named: "ab5.jpg")!
+                        self.detailImageView.image = UIImage(named: "de5.jpg")!
+                        self.prevFontID = maxID
+                    case 6:
+                        self.abstImageView.image = UIImage(named: "ab6.jpg")!
+                        self.detailImageView.image = UIImage(named: "de6.jpg")!
+                        self.prevFontID = maxID
+                    case 7:
+                        self.abstImageView.image = UIImage(named: "ab7.jpg")!
+                        self.detailImageView.image = UIImage(named: "de7.jpg")!
+                        self.prevFontID = maxID
+                    default:
+                        print("hoge")
+                    }
+                }
                 
             }
         }
